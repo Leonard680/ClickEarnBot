@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tap & Earn</title>
+  <script src='//whephiwums.com/sdk.js' data-zone='9324910' data-sdk='show_9324910'></script>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .balance {
+      background: #001f3f;
+      padding: 10px;
+      text-align: center;
+      font-size: 20px;
+      position: fixed;
+      width: 100%;
+      top: 0;
+      z-index: 1000;
+    }
+    .section {
+      display: none;
+      padding: 70px 20px 80px;
+    }
+    .active {
+      display: block;
+    }
+    .tap-button {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: blue;
+      color: white;
+      font-size: 24px;
+      border: none;
+      margin: 50px auto;
+      display: block;
+      cursor: pointer;
+    }
+    .menu {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #001f3f;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 1000;
+    }
+    .menu button {
+      background: blue;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 5px;
+    }
+    .history-item {
+      background: #111;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 4px solid blue;
+    }
+  </style>
+</head>
+<body>
+
+<div class="balance">Balance: <span id="balance">0</span> COINS</div>
+
+<!-- Home Section -->
+<div id="home" class="section active">
+  <button class="tap-button" onclick="tapWithAd()">TAP ME</button>
+</div>
+
+<!-- Withdraw Section -->
+<div id="withdraw" class="section">
+  <div class="input-group"><input type="text" id="bank" placeholder="Bank" /></div>
+  <div class="input-group"><input type="text" id="accountNumber" placeholder="Account Number" /></div>
+  <div class="input-group"><input type="text" id="accountName" placeholder="Account Name" /></div>
+  <div class="input-group"><input type="number" id="amount" placeholder="Amount (Minimum 200,000)" /></div>
+  <button class="tap-button" onclick="withdraw()">Withdraw</button>
+</div>
+
+<!-- History Section -->
+<div id="history" class="section">
+  <div id="historyList"></div>
+</div>
+
+<!-- Navigation Menu -->
+<div class="menu">
+  <button onclick="showSection('home')">Home</button>
+  <button onclick="showSection('withdraw')">Withdraw</button>
+  <button onclick="showSection('history')">History</button>
+</div>
+
+<script>
+  let balance = parseInt(localStorage.getItem('balance')) || 0;
+  updateBalance();
+
+  function updateBalance() {
+    document.getElementById("balance").innerText = balance.toLocaleString();
+    localStorage.setItem('balance', balance);
+  }
+
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (id === "history") loadHistory();
+  }
+
+  function tapWithAd() {
+    if (typeof show_9324910 === 'function') {
+      show_9324910().then(() => {
+        balance += 100;
+        updateBalance();
+        alert('You have earned 100 COINS!');
+      }).catch(() => {
+        alert('Ad failed to load. Try again.');
+      });
+    } else {
+      alert('Ad not ready. Please wait.');
+    }
+  }
+
+  function withdraw() {
+    const bank = document.getElementById('bank').value.trim();
+    const accountNumber = document.getElementById('accountNumber').value.trim();
+    const accountName = document.getElementById('accountName').value.trim();
+    const amount = parseInt(document.getElementById('amount').value.trim());
+
+    if (!bank || !accountNumber || !accountName || isNaN(amount)) {
+      alert('Please fill all fields correctly.');
+      return;
+    }
+
+    if (amount < 200000) {
+      alert("Minimum withdrawal is 200,000 COINS");
+      return;
+    }
+
+    if (balance < amount) {
+      alert("Insufficient balance.");
+      return;
+    }
+
+    const time = new Date().toLocaleString();
+
+    const data = {
+      Bank: bank,
+      "Account Number": accountNumber,
+      "Account Name": accountName,
+      Amount: amount,
+      Status: "Pending",
+      Time: time
+    };
+
+    fetch('https://sheetdb.io/api/v1/7bfkldaha6bz8', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: [data] })
+    }).then(res => res.json())
+      .then(() => {
+        balance -= amount;
+        updateBalance();
+        saveHistory(data);
+        alert("Withdrawal Placed Successfully. Contact admin.");
+        document.getElementById('bank').value = '';
+        document.getElementById('accountNumber').value = '';
+        document.getElementById('accountName').value = '';
+        document.getElementById('amount').value = '';
+      }).catch(() => {
+        alert("Error submitting withdrawal. Please try again.");
+      });
+  }
+
+  function saveHistory(entry) {
+    let history = JSON.parse(localStorage.getItem("withdrawals")) || [];
+    history.unshift(entry);
+    history = history.slice(0, 10);
+    localStorage.setItem("withdrawals", JSON.stringify(history));
+  }
+
+  function loadHistory() {
+    const list = document.getElementById("historyList");
+    list.innerHTML = "";
+    const history = JSON.parse(localStorage.getItem("withdrawals")) || [];
+
+    if (history.length === 0) {
+      list.innerHTML = "<p>No withdrawal history found.</p>";
+      return;
+    }
+
+    history.forEach(entry => {
+      list.innerHTML += `
+        <div class="history-item">
+          <b>Bank:</b> ${entry.Bank}<br>
+          <b>Account Number:</b> ${entry["Account Number"]}<br>
+          <b>Account Name:</b> ${entry["Account Name"]}<br>
+          <b>Amount:</b> ${parseInt(entry.Amount).toLocaleString()} COINS<br>
+          <b>Time:</b> ${entry.Time}
+        </div>
+      `;
+    });
+  }
+</script>
+
+</body>
+  </html>
