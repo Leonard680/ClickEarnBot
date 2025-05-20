@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tap & Earn</title>
-  <script src='//whephiwums.com/sdk.js' data-zone='9324910' data-sdk='show_9324910'></script>
+  <script src='//libtl.com/sdk.js' data-zone='9324910' data-sdk='show_9324910'></script>
   <style>
     body {
       margin: 0;
@@ -37,9 +37,14 @@
       color: white;
       font-size: 24px;
       border: none;
-      margin: 50px auto;
+      margin: 50px auto 10px;
       display: block;
       cursor: pointer;
+    }
+    .tap-count {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 10px;
     }
     .menu {
       position: fixed;
@@ -85,6 +90,7 @@
 <!-- Home Section -->
 <div id="home" class="section active">
   <button class="tap-button" onclick="tapWithAd()">TAP ME</button>
+  <div class="tap-count">Taps: <span id="tapCount">0</span></div>
 </div>
 
 <!-- Withdraw Section -->
@@ -110,11 +116,14 @@
 
 <script>
   let balance = parseInt(localStorage.getItem('balance')) || 0;
-  updateBalance();
+  let tapCount = parseInt(localStorage.getItem('tapCount')) || 0;
+  updateDisplay();
 
-  function updateBalance() {
+  function updateDisplay() {
     document.getElementById("balance").innerText = balance.toLocaleString();
+    document.getElementById("tapCount").innerText = tapCount.toLocaleString();
     localStorage.setItem('balance', balance);
+    localStorage.setItem('tapCount', tapCount);
   }
 
   function showSection(id) {
@@ -126,9 +135,11 @@
   function tapWithAd() {
     if (typeof show_9324910 === 'function') {
       show_9324910().then(() => {
-        balance += 100;
-        updateBalance();
-        alert('You have earned 100 COINS!');
+        tapCount++;
+        let earnPerTap = tapCount >= 1000 ? 700 : 500;
+        balance += earnPerTap;
+        updateDisplay();
+        alert(`You earned ${earnPerTap} COINS!`);
       }).catch(() => {
         alert('Ad failed to load. Try again.');
       });
@@ -159,7 +170,6 @@
     }
 
     const time = new Date().toLocaleString();
-
     const data = {
       Bank: bank,
       "Account Number": accountNumber,
@@ -176,7 +186,7 @@
     }).then(res => res.json())
       .then(() => {
         balance -= amount;
-        updateBalance();
+        updateDisplay();
         saveHistory(data);
         alert("Withdrawal Placed Successfully. Contact admin.");
         document.getElementById('bank').value = '';
